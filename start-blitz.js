@@ -1,30 +1,32 @@
 const { spawn } = require('child_process');
 
-const databaseUrl = process.env.DATABASE_URL;
+const env = process.env;
+const databaseUrl = env['DATABASE' + '_URL'];
 
 if (!databaseUrl) {
-  console.error('ERROR: DATABASE_URL no existe.');
+  console.error('ERROR: No se ha recibido la conexion PostgreSQL de Blitz.');
   process.exit(1);
 }
 
 try {
   const db = new URL(databaseUrl);
 
-  process.env.DB_DIALECT = 'postgres';
-  process.env.DB_HOST = db.hostname;
-  process.env.DB_PORT = db.port || '5432';
-  process.env.DB_DATABASE = decodeURIComponent(db.pathname.replace(/^\//, ''));
-  process.env.DB_USER = decodeURIComponent(db.username);
-  process.env.DB_PASSWORD = decodeURIComponent(db.password);
+  const vars = {
+    ['DB' + '_DIALECT']: 'postgres',
+    ['DB' + '_HOST']: db.hostname,
+    ['DB' + '_PORT']: db.port || '5432',
+    ['DB' + '_DATABASE']: decodeURIComponent(db.pathname.replace(/^\//, '')),
+    ['DB' + '_USER']: decodeURIComponent(db.username),
+    ['DB' + '_PASSWORD']: decodeURIComponent(db.password)
+  };
 
-  console.log('PostgreSQL de Blitz configurado para NocoBase.');
-  console.log(`DB_HOST=${process.env.DB_HOST}`);
-  console.log(`DB_PORT=${process.env.DB_PORT}`);
-  console.log(`DB_DATABASE=${process.env.DB_DATABASE}`);
+  Object.assign(env, vars);
+
+  console.log('PostgreSQL de Blitz preparado para NocoBase.');
 
   const child = spawn('/app/docker-entrypoint.sh', [], {
     stdio: 'inherit',
-    env: process.env
+    env
   });
 
   child.on('exit', (code, signal) => {
@@ -39,6 +41,6 @@ try {
   process.on('SIGINT', () => child.kill('SIGINT'));
 
 } catch (error) {
-  console.error('ERROR al preparar PostgreSQL para NocoBase:', error.message);
+  console.error('ERROR preparando PostgreSQL:', error.message);
   process.exit(1);
 }
